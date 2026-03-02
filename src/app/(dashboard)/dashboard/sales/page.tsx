@@ -50,46 +50,73 @@ export default async function SalesPage() {
 
       <Section title={t("pages.sales.createSale")}>
         <form action={createSaleAction} className="grid gap-3 md:grid-cols-3">
-          <select name="paymentMethod" defaultValue="CASH">
-            <option value="CASH">{t("pages.sales.paymentCash")}</option>
-            <option value="TRANSFER">{t("pages.sales.paymentReservation")}</option>
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.paymentMethod")}
+            <select name="paymentMethod" defaultValue="CASH">
+              <option value="CASH">{t("pages.sales.paymentCash")}</option>
+              <option value="TRANSFER">{t("pages.sales.paymentReservation")}</option>
+            </select>
+          </label>
 
-          <select name="staffId" defaultValue={defaultStaffId} required>
-            <option value="">{t("pages.sales.selectStaff")}</option>
-            {staffList.map((staff) => (
-              <option key={staff.id} value={staff.id}>
-                {staff.name} ({staffTypeLabel[staff.type] ?? staff.type})
-              </option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.selectStaff")}
+            <select name="staffId" defaultValue={defaultStaffId} required>
+              <option value="">{t("pages.sales.selectStaff")}</option>
+              {staffList.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name} ({staffTypeLabel[staff.type] ?? staff.type})
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <select name="type" defaultValue={SaleItemType.PRODUCT}>
-            {Object.values(SaleItemType).map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.type")}
+            <select name="type" defaultValue={SaleItemType.PRODUCT}>
+              {Object.values(SaleItemType).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </label>
 
-          <select name="referenceId" required>
-            <option value="">{t("pages.sales.selectItem")}</option>
-            {refCatalog.map((item) => (
-              <option key={`${item.type}-${item.id}`} value={item.id}>
-                {item.label} ({formatCurrency(item.price)})
-              </option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.selectItem")}
+            <select name="referenceId" required>
+              <option value="">{t("pages.sales.selectItem")}</option>
+              {refCatalog.map((item) => (
+                <option key={`${item.type}-${item.id}`} value={item.id}>
+                  {item.label} ({formatCurrency(item.price)})
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <input name="quantity" type="number" min={1} defaultValue={1} required />
-          <input name="unitPrice" type="number" min={0} step="0.01" placeholder={t("pages.sales.unitPriceOverride")} />
-          <select name="clientId" defaultValue="">
-            <option value="">{t("pages.sales.clientRequiredForPackage")}</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>{client.name}</option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.quantity")}
+            <input name="quantity" type="number" min={1} defaultValue={1} required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.unitPriceOverride")}
+            <input name="unitPrice" type="number" min={0} step="0.01" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.clientRequiredForPackage")}
+            <select name="clientId" defaultValue="">
+              <option value="">{t("pages.sales.clientRequiredForPackage")}</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </label>
 
-          <input name="customPrice" type="number" min={0} step="0.01" placeholder={t("pages.sales.customPackagePrice")} />
-          <input name="expirationDate" type="date" />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.sales.customPackagePrice")}
+            <input name="customPrice" type="number" min={0} step="0.01" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.packages.expires")}
+            <input name="expirationDate" type="date" />
+          </label>
 
           <button className="md:col-span-3" type="submit">{t("pages.sales.createSaleButton")}</button>
         </form>

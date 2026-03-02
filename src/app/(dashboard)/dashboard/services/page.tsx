@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
-import { formatCurrency } from "@/lib/format";
 import { createTranslator, getUserLocale } from "@/lib/i18n";
 import { Section } from "@/components/ui/section";
 import { prisma } from "@/lib/prisma";
@@ -38,8 +37,20 @@ export default async function ServicesPage() {
       <Section title={t("pages.services.addService")}>
         <form action={createServiceAction} className="grid gap-3 md:grid-cols-2">
           <input name="name" placeholder={t("pages.services.serviceName")} required />
-          <input name="basePrice" type="number" step="0.01" min={0} placeholder={t("pages.services.basePrice")} required />
-          <input name="durationMinutes" type="number" min={1} placeholder={t("pages.services.durationOptional")} />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.services.basePriceEur")}
+            <div className="flex items-center rounded-md border border-[var(--bc-border)] bg-[#fffdf9]">
+              <input className="flex-1 border-0 bg-transparent" name="basePrice" type="number" step="0.01" min={0} required />
+              <span className="px-3 text-sm text-[var(--bc-muted)]">€</span>
+            </div>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.services.durationMinutesMin")}
+            <div className="flex items-center rounded-md border border-[var(--bc-border)] bg-[#fffdf9]">
+              <input className="flex-1 border-0 bg-transparent" name="durationMinutes" type="number" min={1} />
+              <span className="px-3 text-sm text-[var(--bc-muted)]">min</span>
+            </div>
+          </label>
           <select name="active" defaultValue="true">
             <option value="true">{t("pages.services.active")}</option>
             <option value="false">{t("pages.services.inactive")}</option>
@@ -55,14 +66,33 @@ export default async function ServicesPage() {
               <form action={updateServiceAction} className="grid gap-3 md:grid-cols-2">
                 <input type="hidden" name="id" value={service.id} />
                 <input name="name" defaultValue={service.name} required />
-                <input name="basePrice" type="number" step="0.01" min={0} defaultValue={Number(service.basePrice)} required />
-                <input name="durationMinutes" type="number" min={1} defaultValue={service.durationMinutes ?? ""} />
+                <div className="flex items-center rounded-md border border-[var(--bc-border)] bg-[#fffdf9]">
+                  <input
+                    className="flex-1 border-0 bg-transparent"
+                    name="basePrice"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    defaultValue={Number(service.basePrice)}
+                    required
+                  />
+                  <span className="px-3 text-sm text-[var(--bc-muted)]">€</span>
+                </div>
+                <div className="flex items-center rounded-md border border-[var(--bc-border)] bg-[#fffdf9]">
+                  <input
+                    className="flex-1 border-0 bg-transparent"
+                    name="durationMinutes"
+                    type="number"
+                    min={1}
+                    defaultValue={service.durationMinutes ?? ""}
+                  />
+                  <span className="px-3 text-sm text-[var(--bc-muted)]">min</span>
+                </div>
                 <select name="active" defaultValue={String(service.active)}>
                   <option value="true">{t("pages.services.active")}</option>
                   <option value="false">{t("pages.services.inactive")}</option>
                 </select>
-                <div className="md:col-span-2 flex justify-between items-center">
-                  <span className="text-xs text-[var(--bc-muted)]">{t("pages.services.basePrice")}: {formatCurrency(Number(service.basePrice))}</span>
+                <div className="md:col-span-2 flex justify-end items-center">
                   <button type="submit">{t("pages.services.saveService")}</button>
                 </div>
               </form>

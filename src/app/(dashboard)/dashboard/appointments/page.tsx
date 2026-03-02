@@ -29,29 +29,44 @@ export default async function AppointmentsPage() {
 
       <Section title={t("pages.appointments.createAppointment")}>
         <form action={createAppointmentAction} className="grid gap-3 md:grid-cols-2">
-          <select name="clientId" required>
-            <option value="">{t("pages.appointments.selectClient")}</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>{client.name}</option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.appointments.selectClient")}
+            <select name="clientId" required>
+              <option value="">{t("pages.appointments.selectClient")}</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </label>
 
-          <select name="serviceId" required>
-            <option value="">{t("pages.appointments.selectService")}</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>{service.name}</option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.appointments.selectService")}
+            <select name="serviceId" required>
+              <option value="">{t("pages.appointments.selectService")}</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>{service.name}</option>
+              ))}
+            </select>
+          </label>
 
-          <select name="employeeId" required>
-            <option value="">{t("pages.appointments.selectEmployee")}</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>{employee.name ?? employee.email}</option>
-            ))}
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.appointments.selectEmployee")}
+            <select name="employeeId" required>
+              <option value="">{t("pages.appointments.selectEmployee")}</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>{employee.name ?? employee.email}</option>
+              ))}
+            </select>
+          </label>
 
-          <input name="startTime" type="datetime-local" required />
-          <textarea name="notes" className="md:col-span-2" rows={2} placeholder={t("common.notes")} />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.dateTime")}
+            <input name="startTime" type="datetime-local" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)] md:col-span-2">
+            {t("common.notes")}
+            <textarea name="notes" rows={2} />
+          </label>
           <button className="md:col-span-2" type="submit">{t("pages.appointments.createAppointmentButton")}</button>
         </form>
       </Section>

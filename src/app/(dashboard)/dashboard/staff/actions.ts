@@ -18,7 +18,6 @@ const createStaffSchema = z.object({
   name: z.string().trim().min(1),
   type: z.nativeEnum(StaffType),
   baseSalary: nullableNumber,
-  commissionPercentage: nullableNumber,
   profitSharePercentage: nullableNumber,
   active: z.union([z.literal("on"), z.literal("true"), z.literal("false"), z.undefined()]).optional()
 });
@@ -32,9 +31,12 @@ const toggleStaffSchema = z.object({
   active: z.enum(["true", "false"])
 });
 
+const deleteStaffSchema = z.object({
+  id: z.string().min(1)
+});
+
 function buildStaffPayload(parsed: z.infer<typeof createStaffSchema>) {
   const baseSalary = toNullableNumber(parsed.baseSalary);
-  const commissionPercentage = toNullableNumber(parsed.commissionPercentage);
   const profitSharePercentage = toNullableNumber(parsed.profitSharePercentage);
 
   if (parsed.type === "INTERNAL") {
@@ -43,7 +45,7 @@ function buildStaffPayload(parsed: z.infer<typeof createStaffSchema>) {
       type: parsed.type,
       active: parsed.active !== "false",
       baseSalary,
-      commissionPercentage,
+      commissionPercentage: null,
       profitSharePercentage: null
     };
   }
@@ -65,7 +67,6 @@ export async function createStaffAction(formData: FormData) {
     name: formData.get("name"),
     type: formData.get("type"),
     baseSalary: formData.get("baseSalary"),
-    commissionPercentage: formData.get("commissionPercentage"),
     profitSharePercentage: formData.get("profitSharePercentage"),
     active: formData.get("active")
   });
@@ -88,7 +89,6 @@ export async function updateStaffAction(formData: FormData) {
     name: formData.get("name"),
     type: formData.get("type"),
     baseSalary: formData.get("baseSalary"),
-    commissionPercentage: formData.get("commissionPercentage"),
     profitSharePercentage: formData.get("profitSharePercentage"),
     active: formData.get("active")
   });
@@ -124,4 +124,33 @@ export async function toggleStaffActiveAction(formData: FormData) {
   revalidatePath("/dashboard/staff");
   revalidatePath("/dashboard/sales");
   revalidatePath("/dashboard/clients");
+}
+
+export async function deleteStaffAction(formData: FormData) {
+  await requireAdmin();
+
+  const parsed = deleteStaffSchema.safeParse({
+    id: formData.get("id")
+  });
+
+  if (!parsed.success) throw new Error("Invalid staff id");
+
+  const [salesCount, usageCount, mappingCount] = await Promise.all([
+    prisma.sale.count({ where: { staffId: parsed.data.id } }),
+    prisma.clientPackageUsage.count({ where: { staffId: parsed.data.id } }),
+    prisma.serviceEmployee.count({ where: { employeeId: parsed.data.id } })
+  ]);
+
+  if (salesCount > 0 || usageCount > 0 || mappingCount > 0) {
+    throw new Error("Cannot delete staff with existing records. Remove related sales/usages/mappings first.");
+  }
+
+  await prisma.staff.delete({
+    where: { id: parsed.data.id }
+  });
+
+  revalidatePath("/dashboard/staff");
+  revalidatePath("/dashboard/sales");
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/statistics");
 }

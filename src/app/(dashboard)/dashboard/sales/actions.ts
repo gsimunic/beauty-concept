@@ -45,16 +45,19 @@ export async function createSaleAction(formData: FormData) {
     const quantity = parsed.data.quantity;
 
     if (parsed.data.type === SaleItemType.PRODUCT) {
-      const product = await tx.product.findUnique({ where: { id: referenceId } });
-      if (!product) throw new Error("Product not found");
+      const product = await tx.product.findUnique({
+        where: { id: referenceId },
+        include: { inventory: true }
+      });
+      if (!product || !product.inventory) throw new Error("Product not found");
 
-      if (product.currentStock < quantity) {
+      if (product.inventory.currentStock < quantity) {
         throw new Error("Insufficient stock");
       }
 
       resolvedUnitPrice = parsed.data.unitPrice ?? toNumber(product.sellingPrice);
-      await tx.product.update({
-        where: { id: product.id },
+      await tx.inventory.update({
+        where: { productId: product.id },
         data: { currentStock: { decrement: quantity } }
       });
 

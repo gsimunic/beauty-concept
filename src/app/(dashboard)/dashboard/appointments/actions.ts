@@ -92,14 +92,17 @@ export async function updateAppointmentStatusAction(formData: FormData) {
         const requiredQty = Math.ceil(toNumber(mapping.quantityUsed));
         if (requiredQty <= 0) continue;
 
-        const product = await tx.product.findUnique({ where: { id: mapping.productId } });
-        if (!product) throw new Error("Mapped product not found");
-        if (product.currentStock < requiredQty) {
+        const product = await tx.product.findUnique({
+          where: { id: mapping.productId },
+          include: { inventory: true }
+        });
+        if (!product || !product.inventory) throw new Error("Mapped product not found");
+        if (product.inventory.currentStock < requiredQty) {
           throw new Error(`Insufficient stock for ${product.name}`);
         }
 
-        await tx.product.update({
-          where: { id: product.id },
+        await tx.inventory.update({
+          where: { productId: product.id },
           data: { currentStock: { decrement: requiredQty } }
         });
 

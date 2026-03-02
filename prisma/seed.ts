@@ -97,10 +97,33 @@ async function main() {
   ];
 
   for (const product of products) {
-    await prisma.product.upsert({
+    const createdProduct = await prisma.product.upsert({
       where: { sku: product.sku },
-      update: product,
-      create: product
+      update: {
+        name: product.name,
+        sku: product.sku,
+        sellingPrice: product.sellingPrice,
+        averagePurchasePrice: product.averagePurchasePrice
+      },
+      create: {
+        name: product.name,
+        sku: product.sku,
+        sellingPrice: product.sellingPrice,
+        averagePurchasePrice: product.averagePurchasePrice
+      }
+    });
+
+    await prisma.inventory.upsert({
+      where: { productId: createdProduct.id },
+      update: {
+        currentStock: product.currentStock,
+        minimumStockLevel: product.minimumStockLevel
+      },
+      create: {
+        productId: createdProduct.id,
+        currentStock: product.currentStock,
+        minimumStockLevel: product.minimumStockLevel
+      }
     });
   }
 }

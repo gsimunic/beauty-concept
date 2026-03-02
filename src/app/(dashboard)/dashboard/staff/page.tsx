@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/format";
 import { createTranslator, getUserLocale } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 
-import { createStaffAction, toggleStaffActiveAction, updateStaffAction } from "./actions";
+import { createStaffAction, deleteStaffAction, toggleStaffActiveAction, updateStaffAction } from "./actions";
 
 export default async function StaffPage() {
   const [session, staffList] = await Promise.all([
@@ -34,14 +34,6 @@ export default async function StaffPage() {
           </select>
 
           <input min={0} name="baseSalary" placeholder={t("pages.staff.baseSalary")} step="0.01" type="number" />
-          <input
-            min={0}
-            max={100}
-            name="commissionPercentage"
-            placeholder={t("pages.staff.commissionPercentage")}
-            step="0.01"
-            type="number"
-          />
           <input
             min={0}
             max={100}
@@ -80,15 +72,6 @@ export default async function StaffPage() {
                     type="number"
                   />
                   <input
-                    defaultValue={staff.commissionPercentage ? Number(staff.commissionPercentage) : ""}
-                    max={100}
-                    min={0}
-                    name="commissionPercentage"
-                    placeholder={t("pages.staff.commissionPercentage")}
-                    step="0.01"
-                    type="number"
-                  />
-                  <input
                     defaultValue={staff.profitSharePercentage ? Number(staff.profitSharePercentage) : ""}
                     max={100}
                     min={0}
@@ -110,20 +93,25 @@ export default async function StaffPage() {
                       {t("pages.staff.baseSalary")}: {staff.baseSalary ? formatCurrency(Number(staff.baseSalary)) : t("common.none")}
                     </span>
                     <span>
-                      {t("pages.staff.commissionPercentage")}: {staff.commissionPercentage ? `${Number(staff.commissionPercentage)}%` : t("common.none")}
-                    </span>
-                    <span>
                       {t("pages.staff.profitSharePercentage")}: {staff.profitSharePercentage ? `${Number(staff.profitSharePercentage)}%` : t("common.none")}
                     </span>
                   </div>
 
-                  <form action={toggleStaffActiveAction} className="flex items-center gap-2">
-                    <input name="id" type="hidden" value={staff.id} />
-                    <input name="active" type="hidden" value={String(!staff.active)} />
-                    <button className="bg-[#7f3b34] text-white hover:bg-[#6d322c]" type="submit">
-                      {staff.active ? t("pages.staff.deactivate") : t("pages.staff.activate")}
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-2">
+                    <form action={toggleStaffActiveAction}>
+                      <input name="id" type="hidden" value={staff.id} />
+                      <input name="active" type="hidden" value={String(!staff.active)} />
+                      <button className="bg-[#7f3b34] text-white hover:bg-[#6d322c]" type="submit">
+                        {staff.active ? t("pages.staff.deactivate") : t("pages.staff.activate")}
+                      </button>
+                    </form>
+                    <form action={deleteStaffAction}>
+                      <input name="id" type="hidden" value={staff.id} />
+                      <button className="bg-[#6d322c] text-white hover:bg-[#562720]" type="submit">
+                        {t("common.delete")}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             ))}

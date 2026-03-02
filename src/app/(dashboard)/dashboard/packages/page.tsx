@@ -49,13 +49,25 @@ export default async function PackagesPage() {
 
       <Section title={t("pages.packages.createTemplate")}>
         <form action={createPackageTemplateAction} className="grid gap-3 md:grid-cols-2">
-          <input name="name" placeholder={t("pages.packages.templateName")} required />
-          <input name="totalPrice" type="number" min={0} step="0.01" placeholder={t("pages.packages.totalPrice")} required />
-          <textarea name="description" className="md:col-span-2" placeholder={t("pages.packages.description")} rows={2} />
-          <select name="active" defaultValue="true">
-            <option value="true">{t("pages.services.active")}</option>
-            <option value="false">{t("pages.services.inactive")}</option>
-          </select>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.packages.templateName")}
+            <input name="name" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.packages.totalPrice")}
+            <input name="totalPrice" type="number" min={0} step="0.01" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)] md:col-span-2">
+            {t("pages.packages.description")}
+            <textarea name="description" className="md:col-span-2" rows={2} />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.status")}
+            <select name="active" defaultValue="true">
+              <option value="true">{t("pages.services.active")}</option>
+              <option value="false">{t("pages.services.inactive")}</option>
+            </select>
+          </label>
           <button className="md:col-span-2" type="submit">{t("pages.packages.createTemplateButton")}</button>
         </form>
       </Section>
@@ -91,13 +103,19 @@ export default async function PackagesPage() {
                   <h3 className="mb-2 text-sm font-medium text-[var(--bc-text)]">{t("pages.packages.templateItems")}</h3>
                   <form action={addPackageTemplateItemAction} className="grid gap-2 md:grid-cols-4">
                     <input type="hidden" name="packageTemplateId" value={template.id} />
-                    <select name="serviceId" required>
-                      <option value="">{t("pages.services.selectService")}</option>
-                      {services.map((service) => (
-                        <option key={service.id} value={service.id}>{service.name}</option>
-                      ))}
-                    </select>
-                    <input name="quantity" type="number" min={1} placeholder={t("pages.packages.quantity")} required />
+                    <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+                      {t("pages.services.selectService")}
+                      <select name="serviceId" required>
+                        <option value="">{t("pages.services.selectService")}</option>
+                        {services.map((service) => (
+                          <option key={service.id} value={service.id}>{service.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+                      {t("pages.packages.quantity")}
+                      <input name="quantity" type="number" min={1} required />
+                    </label>
                     <button className="md:col-span-2" type="submit">{t("pages.packages.addItem")}</button>
                   </form>
 

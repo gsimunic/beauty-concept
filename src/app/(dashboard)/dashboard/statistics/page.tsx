@@ -104,7 +104,6 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
           <StatCard title={t("pages.statistics.externalPayoutObligations")} value={formatCurrency(stats.financial.externalPayoutObligations)} />
           <StatCard title={t("pages.statistics.totalExpenses")} value={formatCurrency(stats.financial.totalExpenses)} />
           <StatCard title={t("pages.statistics.internalSalaryCost")} value={formatCurrency(stats.financial.internalSalaryCost)} />
-          <StatCard title={t("pages.statistics.internalCommissionCost")} value={formatCurrency(stats.financial.internalCommissionCost)} />
           <StatCard title={t("pages.statistics.netProfit")} value={formatCurrency(stats.financial.netProfit)} />
           <StatCard title={t("pages.statistics.realNetProfitToSalon")} value={formatCurrency(stats.financial.realNetProfitToSalon)} />
           <StatCard title={t("pages.statistics.grossMargin")} value={`${stats.financial.grossMarginPercent.toFixed(2)}%`} />
@@ -167,7 +166,6 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
                   <th className="px-2 py-2 font-medium">{t("pages.statistics.servicesPerformed")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.statistics.productsSold")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.statistics.packagesSold")}</th>
-                  <th className="px-2 py-2 font-medium">{t("pages.statistics.commissionEarned")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.statistics.salaryCost")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.statistics.externalPayout")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.statistics.salonRevenue")}</th>
@@ -183,7 +181,6 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
                     <td className="px-2 py-2">{item.servicesPerformed}</td>
                     <td className="px-2 py-2">{item.productsSold}</td>
                     <td className="px-2 py-2">{item.packagesSold}</td>
-                    <td className="px-2 py-2">{formatCurrency(item.commissionEarned)}</td>
                     <td className="px-2 py-2">{formatCurrency(item.estimatedSalaryCost)}</td>
                     <td className="px-2 py-2">{formatCurrency(item.externalPayout)}</td>
                     <td className="px-2 py-2">{formatCurrency(item.salonRevenue)}</td>

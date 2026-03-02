@@ -19,11 +19,26 @@ export default async function SuppliersPage() {
 
       <Section title={t("pages.suppliers.addSupplier")}>
         <form action={createSupplierAction} className="grid gap-3 md:grid-cols-2">
-          <input name="name" placeholder={t("pages.suppliers.supplierName")} required />
-          <input name="contactName" placeholder={t("pages.suppliers.contactName")} />
-          <input name="phone" placeholder={t("pages.clients.phone")} />
-          <input name="email" placeholder={t("pages.clients.email")} type="email" />
-          <textarea className="md:col-span-2" name="notes" placeholder={t("common.notes")} rows={3} />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.suppliers.supplierName")}
+            <input name="name" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.suppliers.contactName")}
+            <input name="contactName" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.phone")}
+            <input name="phone" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.email")}
+            <input name="email" type="email" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)] md:col-span-2">
+            {t("common.notes")}
+            <textarea className="md:col-span-2" name="notes" rows={3} />
+          </label>
           <button className="md:col-span-2" type="submit">
             {t("pages.suppliers.addSupplierButton")}
           </button>

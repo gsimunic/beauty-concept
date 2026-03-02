@@ -24,14 +24,26 @@ export default async function ExpensesPage() {
 
       <Section title={t("pages.expenses.addExpense")}>
         <form action={createExpenseAction} className="grid gap-3 md:grid-cols-2">
-          <select name="category" defaultValue={ExpenseCategory.OTHER}>
-            {Object.values(ExpenseCategory).map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-          <input name="amount" type="number" min={0} step="0.01" placeholder={t("pages.expenses.amount")} required />
-          <input name="date" type="date" required />
-          <input name="notes" placeholder={t("common.notes")} />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.category")}
+            <select name="category" defaultValue={ExpenseCategory.OTHER}>
+              {Object.values(ExpenseCategory).map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.expenses.amount")}
+            <input name="amount" type="number" min={0} step="0.01" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.date")}
+            <input name="date" type="date" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.notes")}
+            <input name="notes" />
+          </label>
           <button className="md:col-span-2" type="submit">{t("pages.expenses.createExpense")}</button>
         </form>
       </Section>

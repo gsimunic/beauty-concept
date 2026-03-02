@@ -180,14 +180,24 @@ model Product {
   sku                  String?         @unique
   sellingPrice         Decimal         @db.Decimal(10, 2)
   averagePurchasePrice Decimal         @default(0) @db.Decimal(10, 2)
-  currentStock         Int             @default(0)
-  minimumStockLevel    Int             @default(0)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
+  inventory            Inventory?
   stockMovements       StockMovement[]
   serviceConsumptions  ServiceConsumption[]
 
   @@index([name])
+}
+
+model Inventory {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  currentStock      Int      @default(0)
+  minimumStockLevel Int      @default(0)
+  updatedAt         DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@index([currentStock])
   @@index([minimumStockLevel])
 }

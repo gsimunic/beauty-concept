@@ -47,9 +47,7 @@ type StaffAccumulator = {
   servicesPerformed: number;
   productsSold: number;
   packagesSold: number;
-  commissionPercentage: number;
   baseSalary: number;
-  profitSharePercentage: number;
   externalPayout: number;
   salonRevenue: number;
 };
@@ -134,9 +132,7 @@ export async function getMonthlyStatistics(month?: string) {
         id: true,
         name: true,
         type: true,
-        baseSalary: true,
-        commissionPercentage: true,
-        profitSharePercentage: true
+        baseSalary: true
       }
     })
   ]);
@@ -206,9 +202,7 @@ export async function getMonthlyStatistics(month?: string) {
       servicesPerformed: usageMap.get(staff.id) ?? 0,
       productsSold: 0,
       packagesSold: 0,
-      commissionPercentage: toNumber(staff.commissionPercentage),
       baseSalary: toNumber(staff.baseSalary),
-      profitSharePercentage: toNumber(staff.profitSharePercentage),
       externalPayout: 0,
       salonRevenue: 0
     });
@@ -226,9 +220,7 @@ export async function getMonthlyStatistics(month?: string) {
         servicesPerformed: usageMap.get(sale.staffId) ?? 0,
         productsSold: 0,
         packagesSold: 0,
-        commissionPercentage: 0,
         baseSalary: 0,
-        profitSharePercentage: 0,
         externalPayout: 0,
         salonRevenue: 0
       } satisfies StaffAccumulator);
@@ -257,7 +249,6 @@ export async function getMonthlyStatistics(month?: string) {
           servicesPerformed: row.servicesPerformed,
           productsSold: row.productsSold,
           packagesSold: row.packagesSold,
-          commissionEarned: 0,
           estimatedSalaryCost: 0,
           externalPayout: row.externalPayout,
           salonRevenue: row.salonRevenue,
@@ -265,9 +256,8 @@ export async function getMonthlyStatistics(month?: string) {
         };
       }
 
-      const commissionEarned = row.revenue * (row.commissionPercentage / 100);
       const estimatedSalaryCost = row.baseSalary;
-      const netContribution = row.revenue - estimatedSalaryCost - commissionEarned;
+      const netContribution = row.revenue - estimatedSalaryCost;
 
       return {
         staffId: row.staffId,
@@ -277,7 +267,6 @@ export async function getMonthlyStatistics(month?: string) {
         servicesPerformed: row.servicesPerformed,
         productsSold: row.productsSold,
         packagesSold: row.packagesSold,
-        commissionEarned,
         estimatedSalaryCost,
         externalPayout: 0,
         salonRevenue: row.revenue,
@@ -291,11 +280,7 @@ export async function getMonthlyStatistics(month?: string) {
     .filter((row) => row.type === "INTERNAL")
     .reduce((sum, row) => sum + row.estimatedSalaryCost, 0);
 
-  const internalCommissionCost = staffPerformance
-    .filter((row) => row.type === "INTERNAL")
-    .reduce((sum, row) => sum + row.commissionEarned, 0);
-
-  const realNetProfitToSalon = salonRetainedRevenue - totalExpenses - internalSalaryCost - internalCommissionCost;
+  const realNetProfitToSalon = salonRetainedRevenue - totalExpenses - internalSalaryCost;
   const netProfit = totalRevenue - totalExpenses;
   const grossMarginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
@@ -310,7 +295,6 @@ export async function getMonthlyStatistics(month?: string) {
       externalPayoutObligations,
       salonRetainedRevenue,
       internalSalaryCost,
-      internalCommissionCost,
       realNetProfitToSalon
     },
     operations: {

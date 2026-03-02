@@ -17,9 +17,13 @@ export async function getDashboardMetrics() {
       select: {
         id: true,
         name: true,
-        currentStock: true,
-        minimumStockLevel: true,
-        averagePurchasePrice: true
+        averagePurchasePrice: true,
+        inventory: {
+          select: {
+            currentStock: true,
+            minimumStockLevel: true
+          }
+        }
       }
     }),
     prisma.sale.findMany({
@@ -91,11 +95,19 @@ export async function getDashboardMetrics() {
   const monthlyExpenses = expenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
   const netProfit = monthlyRevenue - monthlyExpenses;
 
-  const totalInventoryValue = products.reduce(
-    (sum, product) => sum + product.currentStock * toNumber(product.averagePurchasePrice),
-    0
-  );
-  const lowStockProducts = products.filter((p) => p.currentStock <= p.minimumStockLevel);
+  const totalInventoryValue = products.reduce((sum, product) => {
+    const stock = product.inventory?.currentStock ?? 0;
+    return sum + stock * toNumber(product.averagePurchasePrice);
+  }, 0);
+
+  const lowStockProducts = products
+    .filter((p) => p.inventory && p.inventory.currentStock <= p.inventory.minimumStockLevel)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      currentStock: p.inventory?.currentStock ?? 0,
+      minimumStockLevel: p.inventory?.minimumStockLevel ?? 0
+    }));
 
   const topServices = serviceAgg.map((item) => ({
     name: serviceMap.get(item.referenceId) ?? "Unknown service",

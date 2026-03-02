@@ -43,10 +43,22 @@ export default async function DashboardClientsPage() {
       <section className="rounded-xl border border-[var(--bc-border)] bg-[var(--bc-surface)] p-5 shadow-sm shadow-[#d5c8b5]/30">
         <h2 className="mb-4 text-lg font-semibold text-[var(--bc-text)]">{t("pages.clients.addClient")}</h2>
         <form action={createClientAction} className="grid gap-3 md:grid-cols-2">
-          <input className="bg-[#fffdf9]" name="name" placeholder={t("pages.clients.fullName")} required />
-          <input className="bg-[#fffdf9]" name="phone" placeholder={t("pages.clients.phone")} required />
-          <input className="bg-[#fffdf9]" name="email" placeholder={t("pages.clients.email")} type="email" />
-          <input className="bg-[#fffdf9]" name="notes" placeholder={t("pages.clients.notes")} />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.fullName")}
+            <input className="bg-[#fffdf9]" name="name" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.phone")}
+            <input className="bg-[#fffdf9]" name="phone" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.email")}
+            <input className="bg-[#fffdf9]" name="email" type="email" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.notes")}
+            <input className="bg-[#fffdf9]" name="notes" />
+          </label>
           <button className="md:col-span-2" type="submit">{t("pages.clients.addClientButton")}</button>
         </form>
       </section>
@@ -85,20 +97,32 @@ export default async function DashboardClientsPage() {
       <section className="rounded-xl border border-[var(--bc-border)] bg-[var(--bc-surface)] p-5 shadow-sm shadow-[#d5c8b5]/30">
         <h2 className="mb-4 text-lg font-semibold text-[var(--bc-text)]">{t("pages.clients.assignPackage")}</h2>
         <form action={assignClientPackageAction} className="grid gap-3 md:grid-cols-4">
-          <select name="clientId" required>
-            <option value="">{t("pages.clients.selectClient")}</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>{client.name}</option>
-            ))}
-          </select>
-          <select name="packageTemplateId" required>
-            <option value="">{t("pages.clients.selectPackageTemplate")}</option>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>{template.name}</option>
-            ))}
-          </select>
-          <input name="customPrice" type="number" min={0} step="0.01" placeholder={t("pages.clients.customPriceOptional")} />
-          <input name="expirationDate" type="date" />
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.selectClient")}
+            <select name="clientId" required>
+              <option value="">{t("pages.clients.selectClient")}</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.selectPackageTemplate")}
+            <select name="packageTemplateId" required>
+              <option value="">{t("pages.clients.selectPackageTemplate")}</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>{template.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.customPriceOptional")}
+            <input name="customPrice" type="number" min={0} step="0.01" />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.packages.expires")}
+            <input name="expirationDate" type="date" />
+          </label>
           <button className="md:col-span-4" type="submit">{t("pages.clients.assignPackageButton")}</button>
         </form>
       </section>
@@ -106,32 +130,47 @@ export default async function DashboardClientsPage() {
       <section className="rounded-xl border border-[var(--bc-border)] bg-[var(--bc-surface)] p-5 shadow-sm shadow-[#d5c8b5]/30">
         <h2 className="mb-4 text-lg font-semibold text-[var(--bc-text)]">{t("pages.clients.clientPackageUsage")}</h2>
         <form action={useClientPackageAction} className="mb-4 grid gap-3 md:grid-cols-5">
-          <select name="clientPackageId" required>
-            <option value="">{t("pages.clients.selectActivePackage")}</option>
-            {clientPackages
-              .filter((pkg) => pkg.status === "ACTIVE")
-              .map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {pkg.client.name} - {pkg.packageTemplate.name} ({pkg.remainingSessions}/{pkg.totalSessions})
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.selectActivePackage")}
+            <select name="clientPackageId" required>
+              <option value="">{t("pages.clients.selectActivePackage")}</option>
+              {clientPackages
+                .filter((pkg) => pkg.status === "ACTIVE")
+                .map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.client.name} - {pkg.packageTemplate.name} ({pkg.remainingSessions}/{pkg.totalSessions})
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.selectPerformedService")}
+            <select name="serviceId" required>
+              <option value="">{t("pages.clients.selectPerformedService")}</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>{service.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.selectStaff")}
+            <select name="staffId" required>
+              <option value="">{t("pages.clients.selectStaff")}</option>
+              {staffList.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name} ({staffTypeLabel[staff.type] ?? staff.type})
                 </option>
               ))}
-          </select>
-          <select name="serviceId" required>
-            <option value="">{t("pages.clients.selectPerformedService")}</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>{service.name}</option>
-            ))}
-          </select>
-          <select name="staffId" required>
-            <option value="">{t("pages.clients.selectStaff")}</option>
-            {staffList.map((staff) => (
-              <option key={staff.id} value={staff.id}>
-                {staff.name} ({staffTypeLabel[staff.type] ?? staff.type})
-              </option>
-            ))}
-          </select>
-          <input name="datePerformed" type="datetime-local" required />
-          <input name="notes" placeholder={t("pages.clients.notes")} />
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("common.dateTime")}
+            <input name="datePerformed" type="datetime-local" required />
+          </label>
+          <label className="grid gap-1 text-xs text-[var(--bc-muted)]">
+            {t("pages.clients.notes")}
+            <input name="notes" />
+          </label>
           <button className="md:col-span-5" type="submit">{t("pages.clients.registerUsage")}</button>
         </form>
 

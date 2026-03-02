@@ -7,22 +7,20 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/require-admin";
 import { toNumber } from "@/lib/utils";
 
 const createProductSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   sku: z.string().trim().optional().or(z.literal("")),
   sellingPrice: z.coerce.number().nonnegative(),
-  averagePurchasePrice: z.coerce.number().nonnegative().default(0),
-  initialStock: z.coerce.number().int().nonnegative().default(0),
-  minimumStockLevel: z.coerce.number().int().nonnegative().default(0)
+  averagePurchasePrice: z.coerce.number().nonnegative().default(0)
 });
 
-const updateProductSchema = z.object({
-  id: z.string().min(1)
-}).merge(
-  createProductSchema.omit({ initialStock: true })
-);
+const updateInventorySettingsSchema = z.object({
+  productId: z.string().min(1),
+  minimumStockLevel: z.coerce.number().int().nonnegative()
+});
 
 const createMovementSchema = z.object({
   productId: z.string().min(1),
@@ -65,9 +63,7 @@ export async function createProductAction(formData: FormData) {
     name: formData.get("name"),
     sku: formData.get("sku"),
     sellingPrice: formData.get("sellingPrice"),
-    averagePurchasePrice: formData.get("averagePurchasePrice"),
-    initialStock: formData.get("initialStock"),
-    minimumStockLevel: formData.get("minimumStockLevel")
+    averagePurchasePrice: formData.get("averagePurchasePrice")
   });
 
   if (!parsed.success) {
@@ -80,60 +76,42 @@ export async function createProductAction(formData: FormData) {
         name: parsed.data.name,
         sku: toNullableString(parsed.data.sku),
         sellingPrice: parsed.data.sellingPrice,
-        averagePurchasePrice: parsed.data.averagePurchasePrice,
-        currentStock: 0,
-        minimumStockLevel: parsed.data.minimumStockLevel
+        averagePurchasePrice: parsed.data.averagePurchasePrice
       }
     });
 
-    if (parsed.data.initialStock > 0) {
-      await tx.product.update({
-        where: { id: product.id },
-        data: { currentStock: parsed.data.initialStock }
-      });
-
-      await tx.stockMovement.create({
-        data: {
-          productId: product.id,
-          quantity: parsed.data.initialStock,
-          purchasePrice: parsed.data.averagePurchasePrice,
-          type: StockMovementType.MANUAL_ADJUSTMENT
-        }
-      });
-    }
+    await tx.inventory.create({
+      data: {
+        productId: product.id,
+        currentStock: 0,
+        minimumStockLevel: 0
+      }
+    });
   });
 
   revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
 }
 
-export async function updateProductAction(formData: FormData) {
+export async function updateInventorySettingsAction(formData: FormData) {
   await requireAuthenticated();
 
-  const parsed = updateProductSchema.safeParse({
-    id: formData.get("id"),
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    sellingPrice: formData.get("sellingPrice"),
-    averagePurchasePrice: formData.get("averagePurchasePrice"),
+  const parsed = updateInventorySettingsSchema.safeParse({
+    productId: formData.get("productId"),
     minimumStockLevel: formData.get("minimumStockLevel")
   });
 
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid product input");
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid inventory settings input");
   }
 
-  await prisma.product.update({
-    where: { id: parsed.data.id },
-    data: {
-      name: parsed.data.name,
-      sku: toNullableString(parsed.data.sku),
-      sellingPrice: parsed.data.sellingPrice,
-      averagePurchasePrice: parsed.data.averagePurchasePrice,
-      minimumStockLevel: parsed.data.minimumStockLevel
-    }
+  await prisma.inventory.update({
+    where: { productId: parsed.data.productId },
+    data: { minimumStockLevel: parsed.data.minimumStockLevel }
   });
 
   revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
 }
 
 export async function createStockMovementAction(formData: FormData) {
@@ -154,12 +132,18 @@ export async function createStockMovementAction(formData: FormData) {
   validateMovementSign(parsed.data.type, parsed.data.quantity);
 
   await prisma.$transaction(async (tx) => {
-    const product = await tx.product.findUnique({ where: { id: parsed.data.productId } });
-    if (!product) {
-      throw new Error("Product not found");
+    const product = await tx.product.findUnique({
+      where: { id: parsed.data.productId },
+      include: {
+        inventory: true
+      }
+    });
+
+    if (!product || !product.inventory) {
+      throw new Error("Product inventory not found");
     }
 
-    const nextStock = product.currentStock + parsed.data.quantity;
+    const nextStock = product.inventory.currentStock + parsed.data.quantity;
     if (nextStock < 0) {
       throw new Error("Stock cannot go below zero");
     }
@@ -171,22 +155,30 @@ export async function createStockMovementAction(formData: FormData) {
         throw new Error("Purchase price is required for PURCHASE movements");
       }
 
-      const currentValue = toNumber(product.averagePurchasePrice) * product.currentStock;
+      const currentValue = toNumber(product.averagePurchasePrice) * product.inventory.currentStock;
       const incomingValue = parsed.data.purchasePrice * parsed.data.quantity;
-      const denominator = product.currentStock + parsed.data.quantity;
+      const denominator = product.inventory.currentStock + parsed.data.quantity;
 
       if (denominator > 0) {
         nextAveragePurchasePrice = (currentValue + incomingValue) / denominator;
       }
     }
 
-    await tx.product.update({
-      where: { id: product.id },
+    await tx.inventory.update({
+      where: { productId: product.id },
       data: {
-        currentStock: nextStock,
-        averagePurchasePrice: nextAveragePurchasePrice
+        currentStock: nextStock
       }
     });
+
+    if (parsed.data.type === StockMovementType.PURCHASE) {
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          averagePurchasePrice: nextAveragePurchasePrice
+        }
+      });
+    }
 
     await tx.stockMovement.create({
       data: {
@@ -201,4 +193,26 @@ export async function createStockMovementAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+}
+
+export async function deleteProductAction(formData: FormData) {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) throw new Error("Invalid product id");
+
+  const [movementCount, consumptionCount] = await Promise.all([
+    prisma.stockMovement.count({ where: { productId: id } }),
+    prisma.serviceConsumption.count({ where: { productId: id } })
+  ]);
+
+  if (movementCount > 0 || consumptionCount > 0) {
+    throw new Error("Cannot delete product with stock history or service mappings.");
+  }
+
+  await prisma.product.delete({ where: { id } });
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
 }
