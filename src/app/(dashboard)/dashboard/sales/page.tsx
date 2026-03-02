@@ -10,14 +10,15 @@ import { prisma } from "@/lib/prisma";
 import { createSaleAction } from "./actions";
 
 export default async function SalesPage() {
-  const [products, services, packages, clients, sales, session] = await Promise.all([
+  const [products, services, packages, clients, staffList, sales, session] = await Promise.all([
     prisma.product.findMany({ orderBy: { name: "asc" } }),
     prisma.service.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.packageTemplate.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.client.findMany({ orderBy: { name: "asc" } }),
+    prisma.staff.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.sale.findMany({
       include: {
-        employee: { select: { name: true, email: true } },
+        staff: { select: { name: true, type: true } },
         items: true
       },
       orderBy: { createdAt: "desc" },
@@ -27,6 +28,7 @@ export default async function SalesPage() {
   ]);
   const locale = await getUserLocale(session?.user.id);
   const t = createTranslator(locale);
+  const defaultStaffId = staffList[0]?.id ?? "";
 
   const refCatalog = [
     ...products.map((p) => ({ id: p.id, label: `PRODUCT | ${p.name}`, price: Number(p.sellingPrice), type: "PRODUCT" })),
@@ -36,6 +38,10 @@ export default async function SalesPage() {
   const paymentLabel: Record<string, string> = {
     CASH: t("pages.sales.paymentCash"),
     TRANSFER: t("pages.sales.paymentReservation")
+  };
+  const staffTypeLabel: Record<string, string> = {
+    INTERNAL: t("pages.staff.internal"),
+    EXTERNAL: t("pages.staff.external")
   };
 
   return (
@@ -47,6 +53,15 @@ export default async function SalesPage() {
           <select name="paymentMethod" defaultValue="CASH">
             <option value="CASH">{t("pages.sales.paymentCash")}</option>
             <option value="TRANSFER">{t("pages.sales.paymentReservation")}</option>
+          </select>
+
+          <select name="staffId" defaultValue={defaultStaffId} required>
+            <option value="">{t("pages.sales.selectStaff")}</option>
+            {staffList.map((staff) => (
+              <option key={staff.id} value={staff.id}>
+                {staff.name} ({staffTypeLabel[staff.type] ?? staff.type})
+              </option>
+            ))}
           </select>
 
           <select name="type" defaultValue={SaleItemType.PRODUCT}>
@@ -89,9 +104,12 @@ export default async function SalesPage() {
               <thead>
                 <tr className="border-b border-[var(--bc-border)] text-[var(--bc-muted)]">
                   <th className="px-2 py-2 font-medium">{t("common.date")}</th>
-                  <th className="px-2 py-2 font-medium">{t("pages.sales.employee")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.sales.staff")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.sales.staffType")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.sales.payment")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.sales.items")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.sales.externalAmount")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.sales.salonAmount")}</th>
                   <th className="px-2 py-2 font-medium">{t("pages.sales.total")}</th>
                 </tr>
               </thead>
@@ -99,7 +117,8 @@ export default async function SalesPage() {
                 {sales.map((sale) => (
                   <tr key={sale.id} className="border-b border-[#efe3d4] align-top">
                     <td className="px-2 py-2">{sale.createdAt.toLocaleString()}</td>
-                    <td className="px-2 py-2">{sale.employee.name ?? sale.employee.email}</td>
+                    <td className="px-2 py-2">{sale.staff.name}</td>
+                    <td className="px-2 py-2">{staffTypeLabel[sale.staff.type] ?? sale.staff.type}</td>
                     <td className="px-2 py-2">{paymentLabel[sale.paymentMethod] ?? sale.paymentMethod}</td>
                     <td className="px-2 py-2">
                       <ul className="grid gap-1">
@@ -108,6 +127,8 @@ export default async function SalesPage() {
                         ))}
                       </ul>
                     </td>
+                    <td className="px-2 py-2">{formatCurrency(Number(sale.externalAmount))}</td>
+                    <td className="px-2 py-2">{formatCurrency(Number(sale.salonAmount))}</td>
                     <td className="px-2 py-2">{formatCurrency(Number(sale.totalAmount))}</td>
                   </tr>
                 ))}

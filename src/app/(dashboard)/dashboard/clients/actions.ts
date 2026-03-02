@@ -35,6 +35,7 @@ const assignPackageSchema = z.object({
 const packageUsageSchema = z.object({
   clientPackageId: z.string().min(1),
   serviceId: z.string().min(1),
+  staffId: z.string().min(1),
   datePerformed: z.coerce.date(),
   notes: z.string().trim().optional().or(z.literal(""))
 });
@@ -172,6 +173,7 @@ export async function useClientPackageAction(formData: FormData) {
   const parsed = packageUsageSchema.safeParse({
     clientPackageId: formData.get("clientPackageId"),
     serviceId: formData.get("serviceId"),
+    staffId: formData.get("staffId"),
     datePerformed: formData.get("datePerformed") || new Date(),
     notes: formData.get("notes")
   });
@@ -187,10 +189,17 @@ export async function useClientPackageAction(formData: FormData) {
     if (!clientPackage) throw new Error("Client package not found");
     if (clientPackage.remainingSessions <= 0) throw new Error("No sessions remaining");
 
+    const existingStaff = await tx.staff.findUnique({
+      where: { id: parsed.data.staffId }
+    });
+    if (!existingStaff) throw new Error("Staff not found");
+    if (!existingStaff.active) throw new Error("Staff member is inactive");
+
     await tx.clientPackageUsage.create({
       data: {
         clientPackageId: parsed.data.clientPackageId,
         serviceId: parsed.data.serviceId,
+        staffId: parsed.data.staffId,
         datePerformed: parsed.data.datePerformed,
         notes: toNullable(parsed.data.notes)
       }

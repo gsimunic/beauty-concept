@@ -69,6 +69,10 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
   const monthParam = searchParams?.month;
   const stats = await getMonthlyStatistics(monthParam);
   const monthOptions = buildMonthOptions(locale, stats.selectedMonth);
+  const staffTypeLabel: Record<string, string> = {
+    INTERNAL: t("pages.staff.internal"),
+    EXTERNAL: t("pages.staff.external")
+  };
 
   return (
     <main className="grid gap-6">
@@ -96,8 +100,13 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
           <StatCard title={t("pages.statistics.productsRevenue")} value={formatCurrency(stats.financial.revenueBreakdown.products)} />
           <StatCard title={t("pages.statistics.servicesRevenue")} value={formatCurrency(stats.financial.revenueBreakdown.services)} />
           <StatCard title={t("pages.statistics.packagesRevenue")} value={formatCurrency(stats.financial.revenueBreakdown.packages)} />
+          <StatCard title={t("pages.statistics.salonRetainedRevenue")} value={formatCurrency(stats.financial.salonRetainedRevenue)} />
+          <StatCard title={t("pages.statistics.externalPayoutObligations")} value={formatCurrency(stats.financial.externalPayoutObligations)} />
           <StatCard title={t("pages.statistics.totalExpenses")} value={formatCurrency(stats.financial.totalExpenses)} />
+          <StatCard title={t("pages.statistics.internalSalaryCost")} value={formatCurrency(stats.financial.internalSalaryCost)} />
+          <StatCard title={t("pages.statistics.internalCommissionCost")} value={formatCurrency(stats.financial.internalCommissionCost)} />
           <StatCard title={t("pages.statistics.netProfit")} value={formatCurrency(stats.financial.netProfit)} />
+          <StatCard title={t("pages.statistics.realNetProfitToSalon")} value={formatCurrency(stats.financial.realNetProfitToSalon)} />
           <StatCard title={t("pages.statistics.grossMargin")} value={`${stats.financial.grossMarginPercent.toFixed(2)}%`} />
         </div>
       </Section>
@@ -141,6 +150,49 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
             }))}
             formatter={formatCurrency}
           />
+        )}
+      </Section>
+
+      <Section title={t("pages.statistics.employeePerformance")}>
+        {stats.topPerformers.employeePerformance.length === 0 ? (
+          <p className="text-sm text-[var(--bc-muted)]">{t("pages.statistics.noData")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--bc-border)] text-[var(--bc-muted)]">
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.employee")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.staffType")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.revenue")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.servicesPerformed")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.productsSold")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.packagesSold")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.commissionEarned")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.salaryCost")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.externalPayout")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.salonRevenue")}</th>
+                  <th className="px-2 py-2 font-medium">{t("pages.statistics.netContribution")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.topPerformers.employeePerformance.map((item) => (
+                  <tr key={item.staffId} className="border-b border-[#efe3d4]">
+                    <td className="px-2 py-2">{item.staff}</td>
+                    <td className="px-2 py-2">{staffTypeLabel[item.type] ?? item.type}</td>
+                    <td className="px-2 py-2">{formatCurrency(item.revenue)}</td>
+                    <td className="px-2 py-2">{item.servicesPerformed}</td>
+                    <td className="px-2 py-2">{item.productsSold}</td>
+                    <td className="px-2 py-2">{item.packagesSold}</td>
+                    <td className="px-2 py-2">{formatCurrency(item.commissionEarned)}</td>
+                    <td className="px-2 py-2">{formatCurrency(item.estimatedSalaryCost)}</td>
+                    <td className="px-2 py-2">{formatCurrency(item.externalPayout)}</td>
+                    <td className="px-2 py-2">{formatCurrency(item.salonRevenue)}</td>
+                    <td className="px-2 py-2">{formatCurrency(item.netContribution)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Section>
     </main>

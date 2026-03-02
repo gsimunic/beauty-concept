@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, Role, StaffType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -6,16 +6,50 @@ async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@beautyconcept.local";
   const employeeEmail = process.env.EMPLOYEE_EMAIL ?? "employee@beautyconcept.local";
 
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
     update: { role: Role.ADMIN, name: "Admin User" },
     create: { email: adminEmail, name: "Admin User", role: Role.ADMIN }
   });
 
-  await prisma.user.upsert({
+  const employeeUser = await prisma.user.upsert({
     where: { email: employeeEmail },
     update: { role: Role.EMPLOYEE, name: "Salon Employee" },
     create: { email: employeeEmail, name: "Salon Employee", role: Role.EMPLOYEE }
+  });
+
+  await prisma.employee.upsert({
+    where: { id: adminUser.id },
+    update: { name: adminUser.name ?? "Admin User", email: adminUser.email, active: true },
+    create: { id: adminUser.id, name: adminUser.name ?? "Admin User", email: adminUser.email, active: true }
+  });
+
+  await prisma.employee.upsert({
+    where: { id: employeeUser.id },
+    update: { name: employeeUser.name ?? "Salon Employee", email: employeeUser.email, active: true },
+    create: {
+      id: employeeUser.id,
+      name: employeeUser.name ?? "Salon Employee",
+      email: employeeUser.email,
+      active: true
+    }
+  });
+
+  await prisma.staff.upsert({
+    where: { id: adminUser.id },
+    update: { name: adminUser.name ?? "Admin User", type: StaffType.INTERNAL, active: true },
+    create: { id: adminUser.id, name: adminUser.name ?? "Admin User", type: StaffType.INTERNAL, active: true }
+  });
+
+  await prisma.staff.upsert({
+    where: { id: employeeUser.id },
+    update: { name: employeeUser.name ?? "Salon Employee", type: StaffType.INTERNAL, active: true },
+    create: {
+      id: employeeUser.id,
+      name: employeeUser.name ?? "Salon Employee",
+      type: StaffType.INTERNAL,
+      active: true
+    }
   });
 
   const services = [

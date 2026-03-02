@@ -10,9 +10,10 @@ import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/utils";
 
 const saleSchema = z.object({
-  paymentMethod: z.enum(["CASH", "CARD", "TRANSFER"]),
+  paymentMethod: z.enum(["CASH", "TRANSFER"]),
   type: z.nativeEnum(SaleItemType),
   referenceId: z.string().min(1),
+  staffId: z.string().min(1),
   quantity: z.coerce.number().int().positive(),
   unitPrice: z.coerce.number().nonnegative().optional(),
   clientId: z.string().optional().or(z.literal("")),
@@ -28,6 +29,7 @@ export async function createSaleAction(formData: FormData) {
     paymentMethod: formData.get("paymentMethod"),
     type: formData.get("type"),
     referenceId: formData.get("referenceId"),
+    staffId: formData.get("staffId"),
     quantity: formData.get("quantity"),
     unitPrice: formData.get("unitPrice") || undefined,
     clientId: formData.get("clientId"),
@@ -100,11 +102,44 @@ export async function createSaleAction(formData: FormData) {
 
     const totalAmount = resolvedUnitPrice * quantity;
 
+    const existingStaff = await tx.staff.findUnique({
+      where: { id: parsed.data.staffId }
+    });
+
+    let resolvedStaff = existingStaff;
+
+    if (!resolvedStaff) {
+      if (parsed.data.staffId !== session.user.id) {
+        throw new Error("Staff not found");
+      }
+
+      resolvedStaff = await tx.staff.create({
+        data: {
+          id: session.user.id,
+          name: session.user.email?.split("@")[0] ?? "Staff",
+          type: "INTERNAL",
+          active: true
+        }
+      });
+    }
+
+    if (!resolvedStaff.active) {
+      throw new Error("Staff member is inactive");
+    }
+
+    const externalAmount =
+      resolvedStaff.type === "EXTERNAL"
+        ? totalAmount * (toNumber(resolvedStaff.profitSharePercentage) / 100)
+        : 0;
+    const salonAmount = totalAmount - externalAmount;
+
     const sale = await tx.sale.create({
       data: {
         totalAmount,
+        externalAmount,
+        salonAmount,
         paymentMethod: parsed.data.paymentMethod,
-        employeeId: session.user.id
+        staffId: parsed.data.staffId
       }
     });
 
@@ -124,4 +159,5 @@ export async function createSaleAction(formData: FormData) {
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/statistics");
 }

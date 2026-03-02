@@ -8,6 +8,7 @@ const links = [
   { href: "/dashboard/statistics", key: "sidebar.statistics" },
   { href: "/dashboard/inventory", key: "sidebar.inventory" },
   { href: "/dashboard/services", key: "sidebar.services" },
+  { href: "/dashboard/staff", key: "sidebar.staff" },
   { href: "/dashboard/packages", key: "sidebar.packages" },
   { href: "/dashboard/clients", key: "sidebar.clients" },
   { href: "/dashboard/sales", key: "sidebar.sales" },

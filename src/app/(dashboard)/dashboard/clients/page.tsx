@@ -13,11 +13,12 @@ import {
 } from "./actions";
 
 export default async function DashboardClientsPage() {
-  const [session, clients, templates, services, clientPackages] = await Promise.all([
+  const [session, clients, templates, services, staffList, clientPackages] = await Promise.all([
     getServerSession(authOptions),
     prisma.client.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.packageTemplate.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.service.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.staff.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.clientPackage.findMany({
       include: {
         client: { select: { name: true } },
@@ -30,6 +31,10 @@ export default async function DashboardClientsPage() {
   const isAdmin = session?.user.role === "ADMIN";
   const locale = await getUserLocale(session?.user.id);
   const t = createTranslator(locale);
+  const staffTypeLabel: Record<string, string> = {
+    INTERNAL: t("pages.staff.internal"),
+    EXTERNAL: t("pages.staff.external")
+  };
 
   return (
     <main className="grid gap-6">
@@ -100,7 +105,7 @@ export default async function DashboardClientsPage() {
 
       <section className="rounded-xl border border-[var(--bc-border)] bg-[var(--bc-surface)] p-5 shadow-sm shadow-[#d5c8b5]/30">
         <h2 className="mb-4 text-lg font-semibold text-[var(--bc-text)]">{t("pages.clients.clientPackageUsage")}</h2>
-        <form action={useClientPackageAction} className="mb-4 grid gap-3 md:grid-cols-4">
+        <form action={useClientPackageAction} className="mb-4 grid gap-3 md:grid-cols-5">
           <select name="clientPackageId" required>
             <option value="">{t("pages.clients.selectActivePackage")}</option>
             {clientPackages
@@ -117,9 +122,17 @@ export default async function DashboardClientsPage() {
               <option key={service.id} value={service.id}>{service.name}</option>
             ))}
           </select>
+          <select name="staffId" required>
+            <option value="">{t("pages.clients.selectStaff")}</option>
+            {staffList.map((staff) => (
+              <option key={staff.id} value={staff.id}>
+                {staff.name} ({staffTypeLabel[staff.type] ?? staff.type})
+              </option>
+            ))}
+          </select>
           <input name="datePerformed" type="datetime-local" required />
           <input name="notes" placeholder={t("pages.clients.notes")} />
-          <button className="md:col-span-4" type="submit">{t("pages.clients.registerUsage")}</button>
+          <button className="md:col-span-5" type="submit">{t("pages.clients.registerUsage")}</button>
         </form>
 
         <div className="grid gap-3">

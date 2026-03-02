@@ -1,4 +1,4 @@
-import { SaleItemType, StockMovementType } from "@prisma/client";
+import { SaleItemType, StaffType, StockMovementType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/utils";
@@ -39,20 +39,37 @@ function monthBounds(month?: string) {
   };
 }
 
+type StaffAccumulator = {
+  staffId: string;
+  staff: string;
+  type: StaffType;
+  revenue: number;
+  servicesPerformed: number;
+  productsSold: number;
+  packagesSold: number;
+  commissionPercentage: number;
+  baseSalary: number;
+  profitSharePercentage: number;
+  externalPayout: number;
+  salonRevenue: number;
+};
+
 export async function getMonthlyStatistics(month?: string) {
   const { start, end, monthValue } = monthBounds(month);
 
   const [
     revenueAgg,
     expensesAgg,
+    saleSums,
     breakdownRows,
-    servicesPerformed,
+    packageUsageRows,
     productsSoldAgg,
     packagesSoldAgg,
     newClientsCount,
     topServicesRows,
     topProductsRows,
-    employeeRevenueRows
+    sales,
+    staffList
   ] = await Promise.all([
     prisma.sale.aggregate({
       where: { createdAt: { gte: start, lt: end } },
@@ -62,13 +79,19 @@ export async function getMonthlyStatistics(month?: string) {
       where: { date: { gte: start, lt: end } },
       _sum: { amount: true }
     }),
+    prisma.sale.aggregate({
+      where: { createdAt: { gte: start, lt: end } },
+      _sum: { externalAmount: true, salonAmount: true }
+    }),
     prisma.saleItem.groupBy({
       by: ["type"],
       where: { sale: { createdAt: { gte: start, lt: end } } },
       _sum: { total: true }
     }),
-    prisma.clientPackageUsage.count({
-      where: { datePerformed: { gte: start, lt: end } }
+    prisma.clientPackageUsage.groupBy({
+      by: ["staffId"],
+      where: { datePerformed: { gte: start, lt: end } },
+      _count: { _all: true }
     }),
     prisma.stockMovement.aggregate({
       where: { type: StockMovementType.SALE, createdAt: { gte: start, lt: end } },
@@ -95,18 +118,33 @@ export async function getMonthlyStatistics(month?: string) {
       orderBy: { _sum: { total: "desc" } },
       take: 5
     }),
-    prisma.sale.groupBy({
-      by: ["employeeId"],
+    prisma.sale.findMany({
       where: { createdAt: { gte: start, lt: end } },
-      _sum: { totalAmount: true },
-      orderBy: { _sum: { totalAmount: "desc" } }
+      select: {
+        staffId: true,
+        totalAmount: true,
+        externalAmount: true,
+        salonAmount: true,
+        items: { select: { type: true, quantity: true } }
+      }
+    }),
+    prisma.staff.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        baseSalary: true,
+        commissionPercentage: true,
+        profitSharePercentage: true
+      }
     })
   ]);
 
   const totalRevenue = toNumber(revenueAgg._sum.totalAmount);
   const totalExpenses = toNumber(expensesAgg._sum.amount);
-  const netProfit = totalRevenue - totalExpenses;
-  const grossMarginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+  const externalPayoutObligations = toNumber(saleSums._sum.externalAmount);
+  const salonRetainedRevenue = toNumber(saleSums._sum.salonAmount);
 
   const revenueBreakdown = {
     products: 0,
@@ -123,20 +161,27 @@ export async function getMonthlyStatistics(month?: string) {
 
   const totalProductsSold = Math.abs(productsSoldAgg._sum.quantity ?? 0);
   const totalPackagesSold = packagesSoldAgg._sum.quantity ?? 0;
+  const totalServiceSales = sales.reduce((sum, sale) => {
+    return (
+      sum +
+      sale.items
+        .filter((item) => item.type === SaleItemType.SERVICE)
+        .reduce((itemSum, item) => itemSum + item.quantity, 0)
+    );
+  }, 0);
+  const totalPackageUsages = packageUsageRows.reduce((sum, row) => sum + row._count._all, 0);
 
   const serviceIds = topServicesRows.map((row) => row.referenceId);
   const productIds = topProductsRows.map((row) => row.referenceId);
-  const employeeIds = employeeRevenueRows.map((row) => row.employeeId);
 
-  const [services, products, employees] = await Promise.all([
+  const [services, products] = await Promise.all([
     prisma.service.findMany({ where: { id: { in: serviceIds } }, select: { id: true, name: true } }),
-    prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } }),
-    prisma.user.findMany({ where: { id: { in: employeeIds } }, select: { id: true, name: true, email: true } })
+    prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } })
   ]);
 
   const serviceMap = new Map(services.map((item) => [item.id, item.name]));
   const productMap = new Map(products.map((item) => [item.id, item.name]));
-  const employeeMap = new Map(employees.map((item) => [item.id, item.name ?? item.email]));
+  const usageMap = new Map(packageUsageRows.map((row) => [row.staffId, row._count._all]));
 
   const topServices = topServicesRows.map((row) => ({
     id: row.referenceId,
@@ -150,11 +195,109 @@ export async function getMonthlyStatistics(month?: string) {
     revenue: toNumber(row._sum.total)
   }));
 
-  const revenuePerEmployee = employeeRevenueRows.map((row) => ({
-    employeeId: row.employeeId,
-    employee: employeeMap.get(row.employeeId) ?? "Unknown",
-    revenue: toNumber(row._sum.totalAmount)
-  }));
+  const staffAccumulator = new Map<string, StaffAccumulator>();
+
+  for (const staff of staffList) {
+    staffAccumulator.set(staff.id, {
+      staffId: staff.id,
+      staff: staff.name,
+      type: staff.type,
+      revenue: 0,
+      servicesPerformed: usageMap.get(staff.id) ?? 0,
+      productsSold: 0,
+      packagesSold: 0,
+      commissionPercentage: toNumber(staff.commissionPercentage),
+      baseSalary: toNumber(staff.baseSalary),
+      profitSharePercentage: toNumber(staff.profitSharePercentage),
+      externalPayout: 0,
+      salonRevenue: 0
+    });
+  }
+
+  for (const sale of sales) {
+    const existing = staffAccumulator.get(sale.staffId);
+    const staffStats =
+      existing ??
+      ({
+        staffId: sale.staffId,
+        staff: "Unknown",
+        type: "INTERNAL",
+        revenue: 0,
+        servicesPerformed: usageMap.get(sale.staffId) ?? 0,
+        productsSold: 0,
+        packagesSold: 0,
+        commissionPercentage: 0,
+        baseSalary: 0,
+        profitSharePercentage: 0,
+        externalPayout: 0,
+        salonRevenue: 0
+      } satisfies StaffAccumulator);
+
+    staffStats.revenue += toNumber(sale.totalAmount);
+    staffStats.externalPayout += toNumber(sale.externalAmount);
+    staffStats.salonRevenue += toNumber(sale.salonAmount);
+
+    for (const item of sale.items) {
+      if (item.type === SaleItemType.SERVICE) staffStats.servicesPerformed += item.quantity;
+      if (item.type === SaleItemType.PRODUCT) staffStats.productsSold += item.quantity;
+      if (item.type === SaleItemType.PACKAGE) staffStats.packagesSold += item.quantity;
+    }
+
+    staffAccumulator.set(sale.staffId, staffStats);
+  }
+
+  const staffPerformance = Array.from(staffAccumulator.values())
+    .map((row) => {
+      if (row.type === "EXTERNAL") {
+        return {
+          staffId: row.staffId,
+          staff: row.staff,
+          type: row.type,
+          revenue: row.revenue,
+          servicesPerformed: row.servicesPerformed,
+          productsSold: row.productsSold,
+          packagesSold: row.packagesSold,
+          commissionEarned: 0,
+          estimatedSalaryCost: 0,
+          externalPayout: row.externalPayout,
+          salonRevenue: row.salonRevenue,
+          netContribution: row.salonRevenue
+        };
+      }
+
+      const commissionEarned = row.revenue * (row.commissionPercentage / 100);
+      const estimatedSalaryCost = row.baseSalary;
+      const netContribution = row.revenue - estimatedSalaryCost - commissionEarned;
+
+      return {
+        staffId: row.staffId,
+        staff: row.staff,
+        type: row.type,
+        revenue: row.revenue,
+        servicesPerformed: row.servicesPerformed,
+        productsSold: row.productsSold,
+        packagesSold: row.packagesSold,
+        commissionEarned,
+        estimatedSalaryCost,
+        externalPayout: 0,
+        salonRevenue: row.revenue,
+        netContribution
+      };
+    })
+    .filter((row) => row.revenue > 0 || row.servicesPerformed > 0 || row.productsSold > 0 || row.packagesSold > 0)
+    .sort((a, b) => b.revenue - a.revenue);
+
+  const internalSalaryCost = staffPerformance
+    .filter((row) => row.type === "INTERNAL")
+    .reduce((sum, row) => sum + row.estimatedSalaryCost, 0);
+
+  const internalCommissionCost = staffPerformance
+    .filter((row) => row.type === "INTERNAL")
+    .reduce((sum, row) => sum + row.commissionEarned, 0);
+
+  const realNetProfitToSalon = salonRetainedRevenue - totalExpenses - internalSalaryCost - internalCommissionCost;
+  const netProfit = totalRevenue - totalExpenses;
+  const grossMarginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
   return {
     selectedMonth: monthValue,
@@ -163,10 +306,15 @@ export async function getMonthlyStatistics(month?: string) {
       revenueBreakdown,
       totalExpenses,
       netProfit,
-      grossMarginPercent
+      grossMarginPercent,
+      externalPayoutObligations,
+      salonRetainedRevenue,
+      internalSalaryCost,
+      internalCommissionCost,
+      realNetProfitToSalon
     },
     operations: {
-      totalServicesPerformed: servicesPerformed,
+      totalServicesPerformed: totalServiceSales + totalPackageUsages,
       totalProductsSold,
       totalPackagesSold,
       newClientsCount
@@ -174,7 +322,12 @@ export async function getMonthlyStatistics(month?: string) {
     topPerformers: {
       topServices,
       topProducts,
-      revenuePerEmployee
+      revenuePerEmployee: staffPerformance.map((item) => ({
+        employeeId: item.staffId,
+        employee: item.staff,
+        revenue: item.revenue
+      })),
+      employeePerformance: staffPerformance
     }
   };
 }

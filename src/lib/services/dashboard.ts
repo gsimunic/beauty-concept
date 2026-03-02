@@ -1,4 +1,4 @@
-import { AppointmentStatus, ClientPackageStatus, SaleItemType } from "@prisma/client";
+import { ClientPackageStatus, SaleItemType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/utils";
@@ -12,7 +12,7 @@ function monthBounds(date = new Date()) {
 export async function getDashboardMetrics() {
   const { start, end } = monthBounds();
 
-  const [products, sales, expenses, activePackages, serviceAgg, productAgg, employeeAgg] = await Promise.all([
+  const [products, sales, expenses, activePackages, serviceAgg, productAgg, staffAgg] = await Promise.all([
     prisma.product.findMany({
       select: {
         id: true,
@@ -24,7 +24,7 @@ export async function getDashboardMetrics() {
     }),
     prisma.sale.findMany({
       where: { createdAt: { gte: start, lte: end } },
-      include: { items: true, employee: { select: { id: true, email: true, name: true } } }
+      include: { items: true, staff: { select: { id: true, name: true, type: true } } }
     }),
     prisma.expense.findMany({
       where: { date: { gte: start, lte: end } },
@@ -56,7 +56,7 @@ export async function getDashboardMetrics() {
       take: 5
     }),
     prisma.sale.groupBy({
-      by: ["employeeId"],
+      by: ["staffId"],
       where: { createdAt: { gte: start, lte: end } },
       _sum: { totalAmount: true },
       _count: { _all: true }
@@ -65,24 +65,17 @@ export async function getDashboardMetrics() {
 
   const serviceIds = serviceAgg.map((item) => item.referenceId);
   const productIds = productAgg.map((item) => item.referenceId);
-  const employeeIds = employeeAgg.map((item) => item.employeeId);
+  const staffIds = staffAgg.map((item) => item.staffId);
 
-  const [services, productsForTop, employees, completedAppointments] = await Promise.all([
+  const [services, productsForTop, staff] = await Promise.all([
     prisma.service.findMany({ where: { id: { in: serviceIds } }, select: { id: true, name: true } }),
     prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } }),
-    prisma.user.findMany({ where: { id: { in: employeeIds } }, select: { id: true, email: true, name: true } }),
-    prisma.appointment.findMany({
-      where: {
-        status: AppointmentStatus.COMPLETED,
-        startTime: { gte: start, lte: end }
-      },
-      select: { serviceId: true, employeeId: true }
-    })
+    prisma.staff.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true } })
   ]);
 
   const serviceMap = new Map(services.map((s) => [s.id, s.name]));
   const productMap = new Map(productsForTop.map((p) => [p.id, p.name]));
-  const employeeMap = new Map(employees.map((e) => [e.id, e.name ?? e.email]));
+  const staffMap = new Map(staff.map((item) => [item.id, item.name]));
 
   const revenueBreakdown = { products: 0, services: 0, packages: 0 };
   for (const sale of sales) {
@@ -116,20 +109,20 @@ export async function getDashboardMetrics() {
     count: item._count._all
   }));
 
-  const serviceCountByEmployee = new Map<string, number>();
-  for (const appointment of completedAppointments) {
-    serviceCountByEmployee.set(
-      appointment.employeeId,
-      (serviceCountByEmployee.get(appointment.employeeId) ?? 0) + 1
-    );
+  const serviceCountByStaff = new Map<string, number>();
+  for (const sale of sales) {
+    const count = sale.items
+      .filter((item) => item.type === SaleItemType.SERVICE)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    serviceCountByStaff.set(sale.staffId, (serviceCountByStaff.get(sale.staffId) ?? 0) + count);
   }
 
-  const employeeStats = employeeAgg.map((item) => ({
-    employeeId: item.employeeId,
-    employee: employeeMap.get(item.employeeId) ?? "Unknown",
+  const employeeStats = staffAgg.map((item) => ({
+    employeeId: item.staffId,
+    employee: staffMap.get(item.staffId) ?? "Unknown",
     revenue: toNumber(item._sum.totalAmount),
     salesCount: item._count._all,
-    servicesPerformed: serviceCountByEmployee.get(item.employeeId) ?? 0
+    servicesPerformed: serviceCountByStaff.get(item.staffId) ?? 0
   }));
 
   return {
