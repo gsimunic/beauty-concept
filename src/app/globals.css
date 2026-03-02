@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bc-bg: #f5ede4;
+  --bc-bg-soft: #f0e5d8;
+  --bc-surface: #fcf7f1;
+  --bc-border: #e7d8c7;
+  --bc-text: #2f2924;
+  --bc-muted: #7f7468;
+  --bc-accent: #8f6a4d;
+  --bc-accent-strong: #744f37;
+  --bc-accent-soft: #efe2d4;
+}
+
+body {
+  background: radial-gradient(140% 100% at 0% 0%, #fbf7f2 0%, var(--bc-bg) 48%, #efe4d7 100%);
+  color: var(--bc-text);
+  @apply antialiased;
+}
+
+input,
+select,
+textarea {
+  border-color: var(--bc-border);
+  background: #fffdf9;
+  color: var(--bc-text);
+  @apply rounded-md px-3 py-2 text-sm outline-none transition;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--bc-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bc-accent-soft) 70%, #ffffff 30%);
+}
+
+button {
+  background: var(--bc-accent-strong);
+  color: #f8f3ec;
+  @apply rounded-md px-3 py-2 text-sm font-medium transition;
+}
+
+button:hover {
+  background: #5c3f2b;
+}
